@@ -6,8 +6,8 @@ use Laravel\Homestead\Settings\JsonSettings;
 use Laravel\Homestead\Settings\YamlSettings;
 use Laravel\Homestead\Traits\GeneratesSlugs;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class MakeCommand extends Command
@@ -33,7 +33,7 @@ class MakeCommand extends Command
      *
      * @var string
      */
-    protected $defaultName;
+    protected $defaultProjectName;
 
     /**
      * Configure the command options.
@@ -44,16 +44,16 @@ class MakeCommand extends Command
     {
         $this->basePath = getcwd();
         $this->projectName = basename($this->basePath);
-        $this->defaultName = $this->slug($this->projectName);
+        $this->defaultProjectName = $this->slug($this->projectName);
 
         $this
             ->setName('make')
             ->setDescription('Install Homestead into the current project')
-            ->addOption('name', null, InputOption::VALUE_OPTIONAL, 'The name of the virtual machine.', $this->defaultName)
-            ->addOption('hostname', null, InputOption::VALUE_OPTIONAL, 'The hostname of the virtual machine.', $this->defaultName)
+            ->addOption('name', null, InputOption::VALUE_OPTIONAL, 'The name of the virtual machine.', $this->defaultProjectName)
+            ->addOption('hostname', null, InputOption::VALUE_OPTIONAL, 'The hostname of the virtual machine.', $this->defaultProjectName)
             ->addOption('ip', null, InputOption::VALUE_OPTIONAL, 'The IP address of the virtual machine.')
-            ->addOption('after', null, InputOption::VALUE_NONE, 'Determines if the after.sh file is created.')
-            ->addOption('aliases', null, InputOption::VALUE_NONE, 'Determines if the aliases file is created.')
+            ->addOption('no-after', null, InputOption::VALUE_NONE, 'Determines if the after.sh file is not created.')
+            ->addOption('no-aliases', null, InputOption::VALUE_NONE, 'Determines if the aliases file is not created.')
             ->addOption('example', null, InputOption::VALUE_NONE, 'Determines if a Homestead example file is created.')
             ->addOption('json', null, InputOption::VALUE_NONE, 'Determines if the Homestead settings file will be in json format.');
     }
@@ -63,7 +63,7 @@ class MakeCommand extends Command
      *
      * @param  \Symfony\Component\Console\Input\InputInterface  $input
      * @param  \Symfony\Component\Console\Output\OutputInterface  $output
-     * @return void
+     * @return int
      */
     public function execute(InputInterface $input, OutputInterface $output)
     {
@@ -71,11 +71,11 @@ class MakeCommand extends Command
             $this->createVagrantfile();
         }
 
-        if ($input->getOption('aliases') && ! $this->aliasesFileExists()) {
+        if (! $input->getOption('no-aliases') && ! $this->aliasesFileExists()) {
             $this->createAliasesFile();
         }
 
-        if ($input->getOption('after') && ! $this->afterShellScriptExists()) {
+        if (! $input->getOption('no-after') && ! $this->afterShellScriptExists()) {
             $this->createAfterShellScript();
         }
 
@@ -96,6 +96,18 @@ class MakeCommand extends Command
         $this->checkForDuplicateConfigs($output);
 
         $output->writeln('Homestead Installed!');
+
+        return 0;
+    }
+
+    /**
+     * Determines if Homestead has been installed "per project".
+     *
+     * @return bool
+     */
+    protected function isPerProjectInstallation()
+    {
+        return (bool) preg_match('/vendor\/laravel\/homestead/', __DIR__);
     }
 
     /**
@@ -115,7 +127,7 @@ class MakeCommand extends Command
      */
     protected function createVagrantfile()
     {
-        copy(__DIR__.'/../resources/LocalizedVagrantfile', "{$this->basePath}/Vagrantfile");
+        copy(__DIR__.'/../resources/localized/Vagrantfile', "{$this->basePath}/Vagrantfile");
     }
 
     /**
@@ -135,7 +147,11 @@ class MakeCommand extends Command
      */
     protected function createAliasesFile()
     {
-        copy(__DIR__.'/../resources/aliases', "{$this->basePath}/aliases");
+        if ($this->isPerProjectInstallation()) {
+            copy(__DIR__.'/../resources/localized/aliases', "{$this->basePath}/aliases");
+        } else {
+            copy(__DIR__.'/../resources/aliases', "{$this->basePath}/aliases");
+        }
     }
 
     /**
@@ -188,13 +204,13 @@ class MakeCommand extends Command
 
         if (! $this->exampleSettingsExists($format)) {
             $settings->updateName($options['name'])
-                     ->updateHostname($options['hostname']);
+                ->updateHostname($options['hostname']);
         }
 
         $settings->updateIpAddress($options['ip'])
-                 ->configureSites($this->projectName, $this->defaultName)
-                 ->configureSharedFolders($this->basePath, $this->defaultName)
-                 ->save("{$this->basePath}/Homestead.{$format}");
+            ->configureSites($this->projectName, $this->defaultProjectName)
+            ->configureSharedFolders($this->basePath, $this->defaultProjectName)
+            ->save("{$this->basePath}/Homestead.{$format}");
     }
 
     /**

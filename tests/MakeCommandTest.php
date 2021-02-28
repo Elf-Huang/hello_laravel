@@ -2,16 +2,17 @@
 
 namespace Tests;
 
-use Symfony\Component\Yaml\Yaml;
+use DMS\PHPUnitExtensions\ArraySubset\ArraySubsetAsserts;
 use Laravel\Homestead\MakeCommand;
-use Tests\Traits\GeneratesTestDirectory;
-use PHPUnit\Framework\TestCase as TestCase;
 use Laravel\Homestead\Traits\GeneratesSlugs;
+use PHPUnit\Framework\TestCase;
 use Symfony\Component\Console\Tester\CommandTester;
+use Symfony\Component\Yaml\Yaml;
+use Tests\Traits\GeneratesTestDirectory;
 
 class MakeCommandTest extends TestCase
 {
-    use GeneratesSlugs, GeneratesTestDirectory;
+    use ArraySubsetAsserts, GeneratesSlugs, GeneratesTestDirectory;
 
     /** @test */
     public function it_displays_a_success_message()
@@ -20,7 +21,7 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertContains('Homestead Installed!', $tester->getDisplay());
+        $this->assertStringContainsString('Homestead Installed!', $tester->getDisplay());
     }
 
     /** @test */
@@ -40,12 +41,11 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile')
-        );
-        $this->assertEquals(
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile'),
-            file_get_contents(__DIR__.'/../resources/LocalizedVagrantfile')
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile');
+
+        $this->assertFileEquals(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile',
+            __DIR__.'/../resources/localized/Vagrantfile'
         );
     }
 
@@ -60,27 +60,41 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertEquals(
-            'Already existing Vagrantfile',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile')
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Vagrantfile',
+            'Already existing Vagrantfile'
         );
     }
 
     /** @test */
-    public function an_aliases_file_is_created_if_requested()
+    public function an_aliases_file_is_created_by_default()
     {
         $tester = new CommandTester(new MakeCommand());
 
-        $tester->execute([
-            '--aliases' => true,
-        ]);
+        $tester->execute([]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases')
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases');
+
+        $this->assertFileEquals(
+            __DIR__.'/../resources/aliases',
+            self::$testDirectory.DIRECTORY_SEPARATOR.'aliases'
         );
-        $this->assertEquals(
-            file_get_contents(__DIR__.'/../resources/aliases'),
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases')
+    }
+
+    /** @test */
+    public function a_localized_aliases_file_is_created_by_default_in_per_project_installations()
+    {
+        $this->markTestSkipped('Currently unable to emulate a per project installation');
+
+        $tester = new CommandTester(new MakeCommand());
+
+        $tester->execute([]);
+
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases');
+
+        $this->assertFileEquals(
+            __DIR__.'/../resources/localized/aliases',
+            self::$testDirectory.DIRECTORY_SEPARATOR.'aliases'
         );
     }
 
@@ -93,34 +107,40 @@ class MakeCommandTest extends TestCase
         );
         $tester = new CommandTester(new MakeCommand());
 
-        $tester->execute([
-            '--aliases' => true,
-        ]);
+        $tester->execute([]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases')
-        );
-        $this->assertEquals(
-            'Already existing aliases',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases')
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases');
+
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'aliases',
+            'Already existing aliases'
         );
     }
 
     /** @test */
-    public function an_after_shell_script_is_created_if_requested()
+    public function an_aliases_file_is_not_created_if_it_is_explicitly_told_to()
     {
         $tester = new CommandTester(new MakeCommand());
 
         $tester->execute([
-            '--after' => true,
+            '--no-aliases' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh')
-        );
-        $this->assertEquals(
-            file_get_contents(__DIR__.'/../resources/after.sh'),
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh')
+        $this->assertFileDoesNotExist(self::$testDirectory.DIRECTORY_SEPARATOR.'aliases');
+    }
+
+    /** @test */
+    public function an_after_shell_script_is_created_by_default()
+    {
+        $tester = new CommandTester(new MakeCommand());
+
+        $tester->execute([]);
+
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh');
+
+        $this->assertFileEquals(
+            __DIR__.'/../resources/after.sh',
+            self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh'
         );
     }
 
@@ -133,17 +153,26 @@ class MakeCommandTest extends TestCase
         );
         $tester = new CommandTester(new MakeCommand());
 
+        $tester->execute([]);
+
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh');
+
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh',
+            'Already existing after.sh'
+        );
+    }
+
+    /** @test */
+    public function an_after_file_is_not_created_if_it_is_explicitly_told_to()
+    {
+        $tester = new CommandTester(new MakeCommand());
+
         $tester->execute([
-            '--after' => true,
+            '--no-after' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh')
-        );
-        $this->assertEquals(
-            'Already existing after.sh',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh')
-        );
+        $this->assertFileDoesNotExist(self::$testDirectory.DIRECTORY_SEPARATOR.'after.sh');
     }
 
     /** @test */
@@ -155,9 +184,7 @@ class MakeCommandTest extends TestCase
             '--example' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example')
-        );
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example');
     }
 
     /** @test */
@@ -173,12 +200,11 @@ class MakeCommandTest extends TestCase
             '--example' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example')
-        );
-        $this->assertEquals(
-            'name: Already existing Homestead.yaml.example',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example')
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example');
+
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml.example',
+            'name: Already existing Homestead.yaml.example'
         );
     }
 
@@ -192,9 +218,7 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example')
-        );
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example');
     }
 
     /** @test */
@@ -211,12 +235,11 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example')
-        );
-        $this->assertEquals(
-            '{"name": "Already existing Homestead.json.example"}',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example')
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example');
+
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json.example',
+            '{"name": "Already existing Homestead.json.example"}'
         );
     }
 
@@ -227,9 +250,7 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml')
-        );
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
     }
 
     /** @test */
@@ -243,9 +264,9 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertEquals(
-            'name: Already existing Homestead.yaml',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml')
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml',
+            'name: Already existing Homestead.yaml'
         );
     }
 
@@ -258,9 +279,7 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json')
-        );
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
     }
 
     /** @test */
@@ -274,9 +293,9 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertEquals(
-            '{"message": "Already existing Homestead.json"}',
-            file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json')
+        $this->assertStringEqualsFile(
+            self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json',
+            '{"message": "Already existing Homestead.json"}'
         );
     }
 
@@ -291,10 +310,9 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml')
-        );
-        $this->assertContains(
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
+
+        $this->assertStringContainsString(
             "message: 'Already existing Homestead.yaml.example'",
             file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml')
         );
@@ -314,7 +332,8 @@ class MakeCommandTest extends TestCase
             '--ip' => '192.168.10.11',
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
+
         $settings = Yaml::parse(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
 
         $this->assertEquals('192.168.10.11', $settings['ip']);
@@ -333,10 +352,9 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(
-            file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json')
-        );
-        $this->assertContains(
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
+
+        $this->assertStringContainsString(
             '"message": "Already existing Homestead.json.example"',
             file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json')
         );
@@ -357,7 +375,8 @@ class MakeCommandTest extends TestCase
             '--ip' => '192.168.10.11',
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
+
         $settings = json_decode(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'), true);
 
         $this->assertEquals('192.168.10.11', $settings['ip']);
@@ -374,11 +393,15 @@ class MakeCommandTest extends TestCase
             '--ip' => '127.0.0.1',
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
+
         $settings = Yaml::parse(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
-        $this->assertEquals('test_name', $settings['name']);
-        $this->assertEquals('test_hostname', $settings['hostname']);
-        $this->assertEquals('127.0.0.1', $settings['ip']);
+
+        self::assertArraySubset([
+            'name' => 'test_name',
+            'hostname' => 'test_hostname',
+            'ip' => '127.0.0.1',
+        ], $settings);
     }
 
     /** @test */
@@ -393,11 +416,15 @@ class MakeCommandTest extends TestCase
             '--ip' => '127.0.0.1',
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
+
         $settings = json_decode(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'), true);
-        $this->assertEquals('test_name', $settings['name']);
-        $this->assertEquals('test_hostname', $settings['hostname']);
-        $this->assertEquals('127.0.0.1', $settings['ip']);
+
+        self::assertArraySubset([
+            'name' => 'test_name',
+            'hostname' => 'test_hostname',
+            'ip' => '127.0.0.1',
+        ], $settings);
     }
 
     /** @test */
@@ -407,13 +434,13 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
-        $projectDirectory = basename(getcwd());
-        $projectName = $this->slug($projectDirectory);
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
+
         $settings = Yaml::parse(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
+
         $this->assertEquals([
-            'map' => "{$projectDirectory}.app",
-            'to' => "/home/vagrant/Code/{$projectName}/public",
+            'map' => 'homestead.test',
+            'to' => '/home/vagrant/code/public',
         ], $settings['sites'][0]);
     }
 
@@ -426,13 +453,13 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'));
-        $projectDirectory = basename(getcwd());
-        $projectName = $this->slug($projectDirectory);
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
+
         $settings = json_decode(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'), true);
+
         $this->assertEquals([
-            'map' => "{$projectDirectory}.app",
-            'to' => "/home/vagrant/Code/{$projectName}/public",
+            'map' => 'homestead.test',
+            'to' => '/home/vagrant/code/public',
         ], $settings['sites'][0]);
     }
 
@@ -443,7 +470,8 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml');
+
         $projectDirectory = basename(getcwd());
         $projectName = $this->slug($projectDirectory);
         $settings = Yaml::parse(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.yaml'));
@@ -457,8 +485,10 @@ class MakeCommandTest extends TestCase
         //
         // The curious thing is that both directories point to the same location.
         //
-        $this->assertRegExp("/{$projectDirectory}/", $settings['folders'][0]['map']);
-        $this->assertEquals("/home/vagrant/Code/{$projectName}", $settings['folders'][0]['to']);
+        $this->assertMatchesRegularExpression("/{$projectDirectory}/", $settings['folders'][0]['map']);
+        $this->assertEquals('/home/vagrant/code', $settings['folders'][0]['to']);
+        $this->assertEquals($projectName, $settings['name']);
+        $this->assertEquals($projectName, $settings['hostname']);
     }
 
     /** @test */
@@ -470,7 +500,8 @@ class MakeCommandTest extends TestCase
             '--json' => true,
         ]);
 
-        $this->assertTrue(file_exists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'));
+        $this->assertFileExists(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json');
+
         $projectDirectory = basename(getcwd());
         $projectName = $this->slug($projectDirectory);
         $settings = json_decode(file_get_contents(self::$testDirectory.DIRECTORY_SEPARATOR.'Homestead.json'), true);
@@ -484,8 +515,10 @@ class MakeCommandTest extends TestCase
         //
         // The curious thing is that both directories point to the same location.
         //
-        $this->assertRegExp("/{$projectDirectory}/", $settings['folders'][0]['map']);
-        $this->assertEquals("/home/vagrant/Code/{$projectName}", $settings['folders'][0]['to']);
+        $this->assertMatchesRegularExpression("/{$projectDirectory}/", $settings['folders'][0]['map']);
+        $this->assertEquals('/home/vagrant/code', $settings['folders'][0]['to']);
+        $this->assertEquals($projectName, $settings['name']);
+        $this->assertEquals($projectName, $settings['hostname']);
     }
 
     /** @test */
@@ -503,6 +536,6 @@ class MakeCommandTest extends TestCase
 
         $tester->execute([]);
 
-        $this->assertContains('WARNING! You have Homestead.yaml AND Homestead.json configuration files', $tester->getDisplay());
+        $this->assertStringContainsString('WARNING! You have Homestead.yaml AND Homestead.json configuration files', $tester->getDisplay());
     }
 }

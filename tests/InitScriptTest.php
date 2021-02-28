@@ -2,8 +2,8 @@
 
 namespace Tests;
 
+use PHPUnit\Framework\TestCase;
 use Tests\Traits\GeneratesTestDirectory;
-use PHPUnit\Framework\TestCase as TestCase;
 
 class InitScriptTest extends TestCase
 {
@@ -12,7 +12,7 @@ class InitScriptTest extends TestCase
     /**
      * Copies init.sh and resources directory to the temporal directory.
      */
-    public function setUp()
+    public function setUp(): void
     {
         $projectDirectory = __DIR__.'/..';
 
@@ -33,7 +33,7 @@ class InitScriptTest extends TestCase
     {
         exec('bash init.sh');
 
-        $this->assertTrue(file_exists(self::$testDirectory.'/Homestead.yaml'));
+        $this->assertFileExists(self::$testDirectory.'/Homestead.yaml');
     }
 
     /** @test */
@@ -41,7 +41,7 @@ class InitScriptTest extends TestCase
     {
         exec('bash init.sh json');
 
-        $this->assertTrue(file_exists(self::$testDirectory.'/Homestead.json'));
+        $this->assertFileExists(self::$testDirectory.'/Homestead.json');
     }
 
     /** @test */
@@ -49,7 +49,7 @@ class InitScriptTest extends TestCase
     {
         exec('bash init.sh');
 
-        $this->assertTrue(file_exists(self::$testDirectory.'/after.sh'));
+        $this->assertFileExists(self::$testDirectory.'/after.sh');
     }
 
     /** @test */
@@ -57,6 +57,6 @@ class InitScriptTest extends TestCase
     {
         exec('bash init.sh');
 
-        $this->assertTrue(file_exists(self::$testDirectory.'/aliases'));
+        $this->assertFileExists(self::$testDirectory.'/aliases');
     }
 }
